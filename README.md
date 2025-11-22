@@ -1,9 +1,71 @@
 This is a collection of 1-file python/batch scripts for making life easier when creating P2P releases.
 
 # Quick Links
+- [General Scripts](#general-scripts)
 - [Subtitle Scripts](#subtitle-scripts)
 - [Audio Scripts](#audio-scripts)
 - [Video Scripts](#video-scripts)
+
+# General Scripts
+<h2><a href="https://github.com/9Oc/Squash-P2P-Script-Emporium/blob/main/general/globaltags.py">globaltags</a></h2>
+globaltags generates an mkv XML tag file containing the TMDB, IMDB, and TVDB2 IDs for a given TMDB ID.
+
+Requirements: Python 3.10+
+
+Dependencies:
+
+`pip install tvdb_v4_official requests rich`
+
+Note that you must provide your TMDB and TVDB API keys at the top of the script.
+```
+TMDB_API_KEY = "TMDB_API_KEY" # <-- your TMDB api key here
+TVDB_API_KEY = "TVDB_API_KEY" # <-- your TVDB api key here
+```
+
+<hr>
+
+### Usage
+A TMDB ID is the only argument accepted.
+
+`globaltags.py <TMDB ID>`
+<hr>
+Example output:
+
+```
+globaltags.py 9005
+Fetching data for TMDB ID: 9005
+
+TMDB match: The Ice Harvest (2005)
+TMDB ID: 9005
+TMDB URL: https://www.themoviedb.org/movie/9005
+
+IMDB ID: tt0400525
+IMDB URL: https://www.imdb.com/title/tt0400525
+
+TVDB match: The Ice Harvest (2005)
+TVDB ID: 8208
+TVDB URL: https://www.thetvdb.com/movies/the-ice-harvest
+
+XML file saved as: .global_tags_The Ice Harvest_2005.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<Tags>
+  <Tag>
+    <Simple>
+      <Name>TMDB</Name>
+      <String>movie/9005</String>
+    </Simple>
+    <Simple>
+      <Name>IMDB</Name>
+      <String>tt0400525</String>
+    </Simple>
+    <Simple>
+      <Name>TVDB2</Name>
+      <String>movies/8208</String>
+    </Simple>
+  </Tag>
+</Tags>
+```
 
 # Subtitle Scripts
 ## supmapper
@@ -16,6 +78,7 @@ Dependencies:
 `pip install git+https://github.com/cubicibo/SUPer.git`
 
 [SupMover](https://github.com/MonoS/SupMover) must be in your PATH with the .exe named `SupMover.exe`.
+<hr>
 
 ### Usage
 An input directory (or multiple directories) and the tonemapping method are required arguments.
@@ -46,6 +109,7 @@ suppf is PGS subtitle palette fixer that corrects common subtitle color issues.
 Requirements: Python 3.6+
 
 Dependencies: None
+<hr>
 
 ### Usage
 Supplying only an input and output defaults to using automatic detection for what color(s) to fix.
@@ -63,9 +127,9 @@ Supplying a main color signals to the script that this is the color meant to be 
 Appending the quiet argument suppresses verbose output.
 
 `append --quiet for no debug output`
+<hr>
+Example of a bad PGS subtitle being fixed by the script
 
-
-### Examples
 Input .sup
 
 <img src="https://img.onlyimage.org/8qfPAc.png" width="517" height="393">
@@ -85,11 +149,13 @@ Requirements: Python 3.10+
 Dependencies:
 
 `pip install soundfile numpy matplotlib`
+<hr>
 
 ### Usage
 An input and an output path are required arguments.
 
 `gen_waveforms.py -i input.flac -o input_waveforms.png`
+<hr>
 
 ### Example Output
 <img src="https://img.onlyimage.org/FtvQN6.png" width="425" height="300">
@@ -106,6 +172,7 @@ Dependencies:
 `pip install rich`
 
 [ffmpeg](https://www.ffmpeg.org/download.html) must be installed and in your PATH.
+<hr>
 
 ### Usage
 A path to a raw h264 stream and a frame number are required arguments.
@@ -113,6 +180,7 @@ A path to a raw h264 stream and a frame number are required arguments.
 `check_idr.py video.h264 --frame 1000`
 
 Adding the `--verbose` argument will output all IDR frames found up to the given frame number.
+<hr>
 
-### Example
+Example output:
 <img src="https://img.onlyimage.org/FtXJGy.png">
