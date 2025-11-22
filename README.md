@@ -30,8 +30,8 @@ Appending the quiet argument suppresses verbose output.
 ### Examples
 Input .sup
 
-![Bad colors that need to be fixed](https://img.onlyimage.org/8qfPAc.png)
+<img src="https://img.onlyimage.org/8qfPAc.png" width="517" height="393">
 
 Fixed .sup with suppf
 
-![Fixed](https://img.onlyimage.org/8qfLnZ.png)
+<img src="https://img.onlyimage.org/8qfLnZ.png" width="517" height="393">
