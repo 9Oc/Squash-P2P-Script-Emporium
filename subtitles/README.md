@@ -93,3 +93,32 @@ Optionally, provide a specific audio file to sync to. The audio file can be any 
 By default, the script processes `N` number of subtitles concurrently where `N` is the number of threads your CPU has. To adjust how many subtitles are processed at once, provide a number of max workers. It may be beneficial to lower the number of max workers if you are syncing many subtitle files and do not have a high thread count CPU.
 
 `syncsubs.py "path\to\subtitles" --audio "path\to\audio.flac" --max-workers 5`
+
+<h2><a href="https://github.com/9Oc/Squash-P2P-Script-Emporium/blob/main/subtitles/syncsups.py">syncsups</a>
+<a href="https://www.python.org/downloads/release/python-3100/"><img src="https://img.shields.io/badge/Python-3.10%2B-brightgreen" alt="Python 3.10+"></a></h2>
+
+`syncsups.py` will sync a given directory containing PGS .sup subtitle files to a given audio file.
+
+Dependencies:
+
+`pip install ffsubsync git+https://github.com/cubicibo/SUPer.git`
+
+[ffmpeg](https://www.ffmpeg.org/download.html) must be installed and in your PATH.
+<hr>
+
+### Usage
+The only required argument is a path to a folder containing the PGS .sup files you want to sync. When no audio file is provided, the script will search for an audio file to sync to in the parent directory of the subtitles folder.
+
+`syncsups.py "path\to\subtitles"`
+
+Optionally, provide a specific audio file to sync to. The audio file can be any codec.
+
+`syncsups.py "path\to\subtitles" --audio "path\to\audio.flac"`
+
+By default, the script processes `N` number of subtitles concurrently where `N` is the number of threads your CPU has. To adjust how many subtitles are processed at once, provide a number of max workers. It may be beneficial to lower the number of max workers if you are syncing many subtitle files and do not have a high thread count CPU.
+
+`syncsubs.py "path\to\subtitles" --audio "path\to\audio.flac" --max-workers 5`
+
+Optionally, provide the `--keep-temp` argument to keep the temporary dummy .srt files created which the script generates and uses to write the new timestamps and framerate to the synced .sup files. This argument can be omitted in a majority of cases and is only used for debugging purposes.
+
+`syncsups.py "path\to\subtitles" --keep-temp`
