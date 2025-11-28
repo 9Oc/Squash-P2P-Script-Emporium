@@ -3,13 +3,13 @@
 // @description Allows you to download subtitles from Netflix, modified for 1-click all subs download
 // @license     MIT
 // @version     1.1
-// @namespace   tithen-firion.github.io
+// @namespace   nfsubdl-squash-mod
 // @include     https://www.netflix.com/*
 // @grant       unsafeWindow
 // @require     https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js
 // @require     https://cdn.jsdelivr.net/npm/file-saver-es@2.0.5/dist/FileSaver.min.js
 // @downloadURL https://raw.githubusercontent.com/9Oc/Squash-P2P-Script-Emporium/refs/heads/main/subtitles/nfsubdl.js
-// @updateURL https://raw.githubusercontent.com/9Oc/Squash-P2P-Script-Emporium/refs/heads/main/subtitles/nfsubdl.js
+// @updateURL   https://raw.githubusercontent.com/9Oc/Squash-P2P-Script-Emporium/refs/heads/main/subtitles/nfsubdl.js
 // ==/UserScript==
 class ProgressBar {
     constructor(max) {
