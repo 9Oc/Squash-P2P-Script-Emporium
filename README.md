@@ -1,4 +1,4 @@
-This is a collection of 1-file python/batch scripts for making life easier when creating P2P releases.
+This is a collection of 1-file scripts for making life easier when creating P2P releases.
 
 The links below lead to the collection of scripts for each category along with a readme with descriptions and usage documentation.
 
