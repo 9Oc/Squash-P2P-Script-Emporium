@@ -13,6 +13,7 @@ SupMover https://github.com/MonoS/SupMover
 SupMover must be added to your PATH with the .exe named "SupMover.exe".
 """
 import argparse
+import math
 import shutil
 import subprocess
 
@@ -20,22 +21,14 @@ from pathlib import Path
 from SUPer import SUPFile, PDS
 
 class PGSFile:
-    def __init__(self, path, max_rgb):
+    def __init__(self, path, max_rgb, max_y):
         self.path = path
         self.max_rgb = max_rgb
+        self.max_y = max_y
         
     def __repr__(self):
         return f"{self.path.stem}"
 
-# YCbCr -> RGB BT.601
-def ycbcr_to_rgb(y, cb, cr):
-    r = y + 1.402 * (cr - 128)
-    g = y - 0.344136 * (cb - 128) - 0.714136 * (cr - 128)
-    b = y + 1.772 * (cb - 128)
-    r = int(round(max(0, min(255, r))))
-    g = int(round(max(0, min(255, g))))
-    b = int(round(max(0, min(255, b))))
-    return (r, g, b)
 
 # YCbCr -> RGB BT.709 / BT.2020
 def ycbcr_to_rgb_limited(y, cb, cr):
@@ -47,11 +40,12 @@ def ycbcr_to_rgb_limited(y, cb, cr):
     b = y + 1.772 * cb
     return tuple(int(round(max(0, min(255, v)))) for v in (r, g, b))
 
-def find_max_rgb_in_sup(sup_path: str | Path) -> int:
+def find_max_rgb_y_in_sup(sup_path: str | Path) -> int:
     sup_path = Path(sup_path)
     sup = SUPFile(sup_path)
     
-    global_max = 0
+    max_rgb = 0
+    max_y = 0
     
     for ds in sup.displaysets():
         for seg in ds:
@@ -63,24 +57,30 @@ def find_max_rgb_in_sup(sup_path: str | Path) -> int:
                         # convert YCbCr to RGB
                         r, g, b = ycbcr_to_rgb_limited(entry.y, entry.cb, entry.cr)
                         current_max = max(r, g, b)
-                        if current_max > global_max:
-                            global_max = current_max
+                        if current_max > max_rgb:
+                            max_rgb = current_max
+                            max_y = entry.y
     
-    return global_max
+    return max_rgb, max_y
+    
+def calculate_target_percent(current_y: float, target_y: float) -> float:
+    source_y_norm = ((current_y - 16) * (255 / 219)) / 255
+    target_y_norm = ((target_y - 16) * (255 / 219)) / 255
+    return target_y_norm / source_y_norm
     
 def tonemap(pgs: PGSFile, target_percent: float) -> Path:
     """
     Apply the specified tonemap percent the specified PGSFile.
     """
-    user_factor = target_percent / 100
     tonemapped_file = pgs.path.parent / "Tonemapped_Subtitles" / f"{pgs.path.stem}_tonemapped.sup"
     print(f"\n  {pgs.path.name}")
-    if (int(pgs.max_rgb * user_factor) == pgs.max_rgb):
-        print(f"  └── Already at target brightness: {pgs.max_rgb}")
+    if (round(pgs.max_y * target_percent) == pgs.max_y):
+        print(f"  └── Already at target brightness: {pgs.max_y}")
         shutil.copy2(pgs.path, tonemapped_file)
         return tonemapped_file
-    print(f"  ├── Applying tonemap: {target_percent:.2f}%")
-    subprocess.run(["SupMover", str(pgs.path), str(tonemapped_file), "--tonemap", str(user_factor)], check=True)
+    
+    print(f"  ├── Applying tonemap: {target_percent:.4f}")
+    subprocess.run(["SupMover", str(pgs.path), str(tonemapped_file), "--tonemap", str(target_percent)], check=True)
     return tonemapped_file
 
 if __name__ == "__main__":
@@ -146,8 +146,9 @@ Examples:
             exit(1)
         
         print(f"\nAnalyzing reference: {args.reference.name}")
-        reference_max_rgb = find_max_rgb_in_sup(str(args.reference))
-        print(f"  Reference max RGB: {reference_max_rgb}")
+        reference_max_rgb, reference_max_y = find_max_rgb_y_in_sup(args.reference)
+        reference_pgs = PGSFile(Path(args.reference), reference_max_rgb, reference_max_y)
+        print(f"  Reference max Y: {reference_pgs.max_y}")
         
     elif args.percent:
         # percentage mode
@@ -166,29 +167,31 @@ Examples:
         pgs_files = []
         print(f"\nAnalyzing subtitle files in {input_dir}")
         for sup_file in sup_files:
-            pgs_file = PGSFile(sup_file, find_max_rgb_in_sup(sup_file))
+            sup_max_rgb, sup_max_y = find_max_rgb_y_in_sup(sup_file)
+            pgs_file = PGSFile(sup_file, sup_max_rgb, sup_max_y)
             pgs_files.append(pgs_file)
-            print(f"  {pgs_file.path.name}: max RGB = {pgs_file.max_rgb}")
+            print(f"  {pgs_file.path.name}: max Y = {pgs_file.max_y}")
             
         print(f"\nTonemapping subtitle files: {input_dir}")
         for pgs in pgs_files:
             if args.reference:
-                target_percent = (reference_max_rgb / pgs.max_rgb) * 100
-                tonemapped_pgs = tonemap(pgs, target_percent)
+                target_percent = calculate_target_percent(pgs.max_y, reference_pgs.max_y)
             elif args.percent:
                 # get the factor to multiply the target percentage by
                 # to tonemap the .sup as if it were pure white
-                if not pgs.max_rgb >= 255:
-                    norm_factor = 255 / pgs.max_rgb
+                if not pgs.max_y >= 235:
+                    norm_factor = 235 / pgs.max_y
                 else:
                     norm_factor = 1.0
-                
-                tonemapped_pgs = tonemap(pgs, norm_factor * target_percent)
+                target_percent = (norm_factor * target_percent) / 100
             elif args.rgb:
-                target_percent = (args.rgb / pgs.max_rgb) * 100
-                tonemapped_pgs = tonemap(pgs, target_percent)
-            tonemapped_rgb = find_max_rgb_in_sup(tonemapped_pgs)
+                target_y = (args.rgb * 219 / 255) + 16
+                target_percent = calculate_target_percent(pgs.max_y, target_y)
+            
+            tonemapped_pgs = tonemap(pgs, target_percent)
+            tonemapped_rgb, tonemapped_y = find_max_rgb_y_in_sup(tonemapped_pgs)
             if (pgs.max_rgb != tonemapped_rgb):
+                print(f"  ├── Y after tonemap: {tonemapped_y}")
                 print(f"  └── RGB after tonemap: {tonemapped_rgb}")
             
         output_dir = input_dir / "Tonemapped_Subtitles"
