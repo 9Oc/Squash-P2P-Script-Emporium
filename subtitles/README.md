@@ -137,4 +137,13 @@ The mod adds the following functions to the script:
 ### Usage
 Add the script to your <a href="https://www.tampermonkey.net/">TamperMonkey</a> dashboard and save it.
 
+<h2><a href="https://github.com/9Oc/Squash-P2P-Scriptorium/blob/main/subtitles/ejsubdl.js">ejsubdl</a></h2>
+
+`ejsubdl.js` is a subtitle downloader for <a href="https://jupiter.err.ee/">Err Jupiter</a>, an Estonian public broadcast streaming service.
+
+### Usage
+Add the script to your <a href="https://www.tampermonkey.net/">TamperMonkey</a> dashboard and save it.
+
+Whenever you load a video on Err Jupiter, the script will automatically download any subtitles available.
+
 Then, load the Netflix video which you would like to download the subtitles for, navigate to the subtitle downloader menu which gets stickied to the top of the window, and press the `Download all subs (squash mod)` button.
