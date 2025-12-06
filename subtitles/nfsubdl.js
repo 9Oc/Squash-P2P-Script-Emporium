@@ -2,16 +2,13 @@
 // @name        Netflix Subtitle Downloader (Squash Mod)
 // @description Allows you to download subtitles from Netflix, modified for 1-click all subs download
 // @license     MIT
-// @version     1.2
+// @version     1.3
 // @namespace   nfsubdl-squash-mod
 // @include     https://www.netflix.com/*
 // @grant       unsafeWindow
 // @require     https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js
 // @require     https://cdn.jsdelivr.net/npm/file-saver-es@2.0.5/dist/FileSaver.min.js
 // ==/UserScript==
-// This script is a mod of "Netflix - subtitle downloader" by Tithen-Firion.
-// Thx to tithen for the original script.
-// You can find the latest version of the mod at this url https://github.com/9Oc/Squash-P2P-Script-Emporium/blob/main/subtitles/nfsubdl.js
 class ProgressBar {
     constructor(max) {
         this.current = 0;
@@ -39,11 +36,17 @@ class ProgressBar {
         this.progressElement.style.width = '100%';
         this.progressElement.style.height = '20px';
         this.progressElement.style.background = 'transparent';
+        this.progressElement.style.color = 'white';
+        this.progressElement.style.textShadow = '0 0 4px black';
         this.stop = new Promise(resolve => {
             this.progressElement.addEventListener('click', () => {resolve(STOP_THE_DOWNLOAD)});
         });
 
         container.appendChild(this.progressElement);
+    }
+
+    updateLabel(text) {
+        this.progressElement.innerHTML = text;
     }
 
     increment() {
@@ -720,7 +723,7 @@ function simulateMouseMovement() {
     player.dispatchEvent(evt);
 }
 
-function keepMenuOpen() {
+async function keepMenuOpen() {
     let btn = document.querySelector(BUTTON_SELECTOR);
     let menu = document.querySelector(MENU_SELECTOR);
     if (!menu) {
@@ -743,24 +746,28 @@ function keepMenuOpen() {
     } else if (btn && !menu) {
         // Open menu if not open
         btn.click();
+        waitForSubtitleMenu()
     }
 }
 
+async function waitForSubtitleMenu() {
+    let items = [];
+    for (let i = 0; i < 40; i++) {
+        items = document.querySelectorAll(SUBTITLE_ITEM_SELECTOR);
+        if (items.length > 0) return;
+        await asyncSleep(0.05);
+    }
+}
+
+const tagged = (promise, tag) =>
+promise.then((value) => ({ tag, value }))
+.catch((err) => ({ tag, error: err }));
+
 const downloadAllSubsSequential = async () => {
+    //get movie/series title
     const [title, seriesTitle] = getTitleFromCache();
     const _zip = new JSZip();
-    const intervalId = setInterval(keepMenuOpen, 25);
-    await asyncSleep(0.8);
-    // Check if the subtitle menu button exists
-    let menuButton = document.querySelector(BUTTON_SELECTOR);
-
-    if (!menuButton) {
-        alert("Could not find subtitle menu button. Move your mouse over the video to show controls, then try again.");
-        clearInterval(intervalId);
-        return;
-    }
-
-    menuButton.click();
+    const intervalId = setInterval(keepMenuOpen, 2);
 
     // Wait for items to appear
     let items = [];
@@ -782,46 +789,33 @@ const downloadAllSubsSequential = async () => {
                               );
 
     console.log(`Found ${allItems.length} subtitles to load`);
-
-    // Download pre-cached regional subtitles
-    let subs = getSubsFromCache(true);
+    // create progress bar
+    const progress = new ProgressBar(allItems.length - 1);
+    // get movie year
     let year = getReleaseYear();
-    if (subs && Object.keys(subs).length > 0) {
-        console.log('Downloading pre-cached subtitles:', Object.keys(subs));
-        for (const lang of Object.keys(subs)) {
-            if (/forced|stripped|dubtitle/i.test(lang)) continue;
-
-            const [urls, extension] = pickFormat(subs[lang]);
-            for (const url of urls) {
-                try {
-                    const result = await fetch(url, {mode: "cors"});
-                    const data = await result.text();
-                    if (data.length > 0) {
-                        _zip.file(`${title}.${year}.NF.WEB.${lang}.${extension}`, data);
-                        break;
-                    }
-                } catch (e) {
-                    console.error("Failed to fetch subtitle", lang, e);
-                }
-            }
-        }
-    }
-
-    const progress = new ProgressBar(allItems.length);
 
     // Click and download all non-loaded subtitles
-    // asyncSleep hack to bypass pre-loaded subtitles which won't create requests
+    let i = 0;
     for (const item of allItems) {
+        waitForSubtitleMenu()
         item.click();
-        const stopOrDone = await Promise.race([
-            waitForSubtitleRequest(),
-            progress.stop,
-            asyncSleep(2.5)
-        ]);
+        const races = [
+            tagged(waitForSubtitleRequest(), 'subtitle'),
+            tagged(progress.stop, 'progressStop')
+        ];
+        if (item === allItems[0]) {
+            races.push(tagged(asyncSleep(0.5), 'sleep'));
+        } else {
+            races.push(tagged(asyncSleep(4), 'sleep_long'));
+        }
+        const stopOrDone = await Promise.race(races);
 
         if (stopOrDone === STOP_THE_DOWNLOAD) {
             console.log("User requested stop. Saving current ZIP…");
             break;
+        }
+        if (stopOrDone.tag === 'sleep') {
+            continue;
         }
         let newSubs = getSubsFromCache(true);
 
@@ -835,7 +829,9 @@ const downloadAllSubsSequential = async () => {
         let allLangs = Object.keys(newSubs).filter(lang =>
                                                    !(/forced|stripped|dubtitle/i.test(lang))
                                                   );
+
         for (const lang of allLangs) {
+            progress.updateLabel(`Downloading subtitle ${i+1}/${allItems.length}`);
             // Skip if already downloaded
             if (_zip.file(`${title}.${year}.NF.WEB.${lang}.${EXTENSIONS[WEBVTT]}`)) {
                 continue;
@@ -855,14 +851,16 @@ const downloadAllSubsSequential = async () => {
                 }
             }
         }
-
+        i++;
         progress.increment();
         subtitleRequestCompleted = false;
     }
     clearInterval(intervalId);
-    progress.destroy();
+    progress.updateLabel(`Cleaning up subtitle filenames...`);
     await cleanAndRenameZipFiles(_zip, LANG_MAP);
+    progress.updateLabel(`Saving zip...`);
     _save(_zip, seriesTitle.replace("_", ""));
+    progress.destroy();
 };
 
 const processMessage = e => {
